@@ -1,0 +1,75 @@
+const CACHE_NAME = 'temp-email-cache-v1';
+const urlsToCache = [
+    './',
+    './index.html',
+    './css/tailwindcss.min.css',
+    './css/style.css',
+    './js/script.js',
+    './manifest.json',
+    './libs/mailjs/3.0.0/dist/mailjs.min.js',
+    './libs/Mailjs/3.0.0/eventsource.min.js',
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'
+];
+
+self.addEventListener('install', event => {
+    self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => {
+                console.log('Opened cache');
+                //return cache.addAll(urlsToCache);
+                return Promise.all(
+                    urlsToCache.map(url => {
+                    return cache.add(url).catch(err => {
+                        console.error(`Failed to cache ${url}:`, err);
+                    });
+                    })
+                );
+            })
+    );
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+});
+
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request)
+            .then(response => {
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request);
+            })
+    );
+});
+
+// PWA Version Check Logic
+self.addEventListener('message', async (event) => {
+    if (event.data && event.data.type === 'CHECK_VERSION') {
+        try {
+            const currentManifest = await caches.match('./manifest.json').then(res => res.json());
+            const newManifestRes = await fetch('./manifest.json');
+            const newManifest = await newManifestRes.json();
+
+            if (currentManifest && newManifest && currentManifest.version !== newManifest.version) {
+                console.log('New PWA version detected. Notifying client.');
+                event.source.postMessage({ type: 'UPDATE_AVAILABLE' });
+            }
+        } catch (error) {
+            console.error('Failed to check for new version:', error);
+        }
+    }
+});
+
