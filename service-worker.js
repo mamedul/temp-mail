@@ -6,7 +6,7 @@ const urlsToCache = [
     './css/style.css',
     './js/script.js',
     './manifest.json',
-    './libs/mailjs/3.0.0/dist/mailjs.min.js',
+    './libs/mailjs/3.0.0/mailjs.min.js',
     './libs/Mailjs/3.0.0/eventsource.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'
 ];
@@ -73,3 +73,24 @@ self.addEventListener('message', async (event) => {
     }
 });
 
+
+self.addEventListener('notificationclick', event => {
+    const messageId = event.notification.data.messageId;
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clientList => {
+            for (const client of clientList) {
+                if ('focus' in client) {
+                    client.postMessage({ type: 'OPEN_MESSAGE', messageId });
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                clients.openWindow('/').then(client => {
+                    client.postMessage({ type: 'OPEN_MESSAGE', messageId });
+                });
+            }
+        })
+    );
+});

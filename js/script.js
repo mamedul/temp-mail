@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Core Libraries & Global State ---
-    const mailjs = new Mailjs();
+    let mailjs = new Mailjs();
     let currentAccount = null;
     let currentMessages = [];
     let isListening = false;
@@ -11,6 +11,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const PWA_VERSION_KEY = 'pwa_version';
     const CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
+    const delay = async (ms) => {
+        return new Promise((resolve) => setTimeout(resolve, ms))
+    };
+
+    const randomString = (length) => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    console.log(randomString(10)); // e.g. "G7f2Xk9PqZ"
+
+    
     const checkPwaVersion = async () => {
         console.log("Checking PWA version...");
         try {
@@ -184,6 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showModal = (text, isConfirm = false) => {
         modalText.textContent = text;
         modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
         if (isConfirm) {
             modalConfirmBtn.classList.remove('hidden');
             return new Promise((resolve) => {
@@ -191,12 +208,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     modalConfirmBtn.removeEventListener('click', confirmHandler);
                     modalCloseBtn.removeEventListener('click', closeHandler);
                     modal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                     resolve(true);
                 };
                 const closeHandler = () => {
                     modalConfirmBtn.removeEventListener('click', confirmHandler);
                     modalCloseBtn.removeEventListener('click', closeHandler);
                     modal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                     resolve(false);
                 };
                 modalConfirmBtn.addEventListener('click', confirmHandler);
@@ -208,6 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const closeHandler = () => {
                     modalCloseBtn.removeEventListener('click', closeHandler);
                     modal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                     resolve();
                 };
                 modalCloseBtn.addEventListener('click', closeHandler);
@@ -239,6 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createAccount = async (username, password, domain) => {
         showView('loading');
         try {
+            mailjs = new Mailjs();
             const registerRes = await mailjs.register(username + '@' + domain, password);
             if (registerRes.status) {
                 const loginRes = await mailjs.login(username + '@' + domain, password);
@@ -250,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         id: loginRes.data.id
                     };
                     localStorage.setItem('account', JSON.stringify(currentAccount));
+                    await loginWithStoredAccount();
                     await postLoginSetup();
                 } else {
                     showModal('Login failed after registration. Please try again.');
@@ -269,19 +291,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createRandomAccount = async () => {
         showView('loading');
         try {
+            mailjs = new Mailjs();
             const res = await mailjs.createOneAccount();
             if (res.status) {
                 currentAccount = {
                     address: res.data.username,
                     password: res.data.password,
-                    token: res.data.token,
-                    id: res.data.id
+                    token: res.data.token || null,
+                    id: res.data.id || null
                 };
                 localStorage.setItem('account', JSON.stringify(currentAccount));
+                await loginWithStoredAccount();
                 await postLoginSetup();
             } else {
-                showModal('Failed to create a random account.');
-                showView('account-forms');
+                let u = randomString(12);
+                let p = randomString(12);
+                // Math.floor(Math.random() * max);
+                let d = domainSelect.options.length == 0 ? null : ( domainSelect.options.length == 1 ? domainSelect.options[0].value : (domainSelect.options[ Math.floor(Math.random() * domainSelect.options.length) ] || {value: null}).value );
+                if(!d || d == '' || d== null){ throw new Error("No domains available"); }
+                const r = await mailjs.register(u+'@'+d, p);
+                if (r.status) {
+                    currentAccount = {
+                        address: r.data.username,
+                        password: r.data.password,
+                        token: r.data.token || null,
+                        id: r.data.id || null
+                    };
+                    localStorage.setItem('account', JSON.stringify(currentAccount));
+                    await loginWithStoredAccount();
+                    await postLoginSetup();
+                }else{
+                    showModal('Failed to create a random account.');
+                    showView('account-forms');
+                }
             }
         } catch (error) {
             console.error('Error creating random account:', error);
@@ -292,6 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const loginWithStoredAccount = async () => {
         showView('loading');
+        mailjs = new Mailjs();
         const storedAccount = JSON.parse(localStorage.getItem('account'));
         if (storedAccount && storedAccount.token) {
             try {
@@ -354,19 +397,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (Notification.permission !== 'granted') {
                 Notification.requestPermission();
             }
-             // Event listener for new messages
+            // Event listener for new messages
             mailjs.on('arrive', async (message) => {
-                console.log('New message arrived:', message);
-                // Fetch the full message to get all details before storing
-                const fullMessageRes = await mailjs.getMessage(message.id);
-                if(fullMessageRes.status) {
-                    await addMessageToDb(fullMessageRes.data);
-                    await renderInboxFromDb();
-                    if (Notification.permission === 'granted') {
-                        new Notification(`New Email from ${fullMessageRes.data.from.name || fullMessageRes.data.from.address}`, {
-                            body: fullMessageRes.data.subject,
-                            icon: 'https://placehold.co/192x192/1e293b/a5b4fc?text=T'
-                        });
+                if(message.id){
+                    // Fetch the full message to get all details before storing
+                    const fullMessageRes = await mailjs.getMessage(message.id);
+                    if(fullMessageRes.status) {
+                        await addMessageToDb(fullMessageRes.data);
+                        await renderInboxFromDb();
+                        if (Notification.permission === 'granted' && !document.hasFocus()) {
+                            new Notification(`New Email from ${fullMessageRes.data.from.name || fullMessageRes.data.from.address}`, {
+                                body: fullMessageRes.data.subject,
+                                icon: './icons/icon_192x192.png',
+                                data: {
+                                    messageId: fullMessageRes.data.id
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -382,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const refreshInbox = async () => {
-        refreshSpinner.classList.remove('hidden');
+        refreshSpinner.classList.add('animate-spin');
         refreshText.textContent = 'Refreshing...';
         
         try {
@@ -414,7 +461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error refreshing inbox:', error);
             showModal('An error occurred while refreshing the inbox.');
         } finally {
-            refreshSpinner.classList.add('hidden');
+            refreshSpinner.classList.remove('animate-spin');
             refreshText.textContent = 'Refresh Inbox';
         }
     };
@@ -588,28 +635,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const deleteAccount = async () => {
         const confirmed = await showModal('Are you sure you want to delete your account? This action cannot be undone.', true);
-        if (confirmed) {
-            showView('loading');
-            try {
-                const res = await mailjs.deleteMe();
-                if (res.status) {
-                    currentAccount = null;
-                    localStorage.removeItem('account');
-                    await clearMessagesDb();
-                    stopEventListeners();
-                    inboxList.innerHTML = '';
-                    showModal('Account deleted successfully.');
-                    showView('account-forms');
-                } else {
-                    showModal('Failed to delete account.');
+        return new Promise(async (resolve, reject) => {
+            if (confirmed) {
+                showView('loading');
+                try {
+                    const res = await mailjs.deleteMe();
+                    if (res.status) {
+                        currentAccount = null;
+                        localStorage.removeItem('account');
+                        await clearMessagesDb();
+                        stopEventListeners();
+                        inboxList.innerHTML = '';
+                        showModal('Account deleted successfully.');
+                        showView('account-forms');
+                        resolve(res);
+                    } else {
+                        showModal('Failed to delete account.');
+                        showView('inbox');
+                        reject('Failed to delete account.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting account:', error);
+                    showModal('An error occurred while deleting the account.');
                     showView('inbox');
+                    reject('An error occurred while deleting the account.');
                 }
-            } catch (error) {
-                console.error('Error deleting account:', error);
-                showModal('An error occurred while deleting the account.');
-                showView('inbox');
+            }else{
+                reject('Cancelled.');
             }
-        }
+        });
     };
 
     // --- Event Listeners for UI Actions ---
@@ -653,7 +707,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     changeEmailBtn.addEventListener('click', () => {
         showModal('This will create a new random email and delete the current one. Are you sure?', true).then(confirmed => {
             if (confirmed) {
-                deleteAccount().then(() => {
+                deleteAccount().then(async() => {
+                    await delay(1200);
                     createRandomAccount();
                 });
             }
@@ -662,6 +717,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     deleteBtn.addEventListener('click', deleteAccount);
     backToInboxBtn.addEventListener('click', () => showView('inbox'));
     
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'OPEN_MESSAGE' && event.data.messageId) {
+            viewMessage(event.data.messageId);
+        }
+      });
+    }
+
     // --- Initial Setup ---
     await openDatabase();
     renderDomains();

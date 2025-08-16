@@ -1,5 +1,9 @@
+# git
+.git/
+
 # Dependency directories
 /node_modules
+/package-lock.json
 
 # PWA files that can be re-generated
 /index.old.html
