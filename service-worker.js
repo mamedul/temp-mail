@@ -8,7 +8,8 @@ const urlsToCache = [
     './manifest.json',
     './libs/mailjs/3.0.0/mailjs.min.js',
     './libs/Mailjs/3.0.0/eventsource.min.js',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
+    'https://www.googletagmanager.com/gtag/js?id=UA-52459272-3',
 ];
 
 self.addEventListener('install', event => {
@@ -20,9 +21,9 @@ self.addEventListener('install', event => {
                 //return cache.addAll(urlsToCache);
                 return Promise.all(
                     urlsToCache.map(url => {
-                    return cache.add(url).catch(err => {
-                        console.error(`Failed to cache ${url}:`, err);
-                    });
+                        return cache.add(url).catch(err => {
+                            console.error(`Failed to cache ${url}:`, err);
+                        });
                     })
                 );
             })
@@ -45,7 +46,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request)
+        caches
+        .match(event.request)
             .then(response => {
                 if (response) {
                     return response;
@@ -75,22 +77,24 @@ self.addEventListener('message', async (event) => {
 
 
 self.addEventListener('notificationclick', event => {
-    const messageId = event.notification.data.messageId;
+    const messageId = (event.notification.data || {messageId: null}).messageId;
     event.notification.close();
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clientList => {
-            for (const client of clientList) {
-                if ('focus' in client) {
-                    client.postMessage({ type: 'OPEN_MESSAGE', messageId });
-                    return client.focus();
+    if(messageId){
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(clientList => {
+                for (const client of clientList) {
+                    if ('focus' in client) {
+                        client.postMessage({ type: 'OPEN_MESSAGE', messageId });
+                        return client.focus();
+                    }
                 }
-            }
-            if (clients.openWindow) {
-                clients.openWindow('/').then(client => {
-                    client.postMessage({ type: 'OPEN_MESSAGE', messageId });
-                });
-            }
-        })
-    );
+                if (clients.openWindow) {
+                    clients.openWindow('/').then(client => {
+                        client.postMessage({ type: 'OPEN_MESSAGE', messageId });
+                    });
+                }
+            })
+        );
+    }
 });

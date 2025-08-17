@@ -2,7 +2,7 @@
     "name": "Temp-E-mail",
     "short_name": "TempMail",
     "description": "A professional, responsive, temporary email service.",
-    "version": "1.0.1",
+    "version": "2025.08.18",
     "start_url": "./",
     "display": "standalone",
     "background_color": "#1e293b",

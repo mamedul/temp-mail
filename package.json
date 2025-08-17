@@ -6,7 +6,9 @@
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.12",
-    "@tailwindcss/postcss": "^4.1.12"
+    "@tailwindcss/postcss": "^4.1.12",
+    "github-markdown-css": "^5.8.1",
+    "markdown-it": "^14.1.0"
   },
   "name": "temp-mail",
   "version": "1.0.0",
@@ -17,5 +19,16 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mamedul/temp-mail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mamedul/temp-mail/issues"
+  },
+  "homepage": "https://github.com/mamedul/temp-mail#readme"
 }
