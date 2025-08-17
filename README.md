@@ -1,6 +1,6 @@
 
 # Temp E-mail
-##  A free, secure, and anonymous temporary disposable email service.
+**A free, secure, and anonymous temporary disposable email service.**
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/mamedul/temp-mail/blob/main/LICENSE) &nbsp;&nbsp; [![GitHub stars](https://img.shields.io/github/stars/mamedul/temp-mail?style=social)](https://github.com/mamedul/temp-mail/stargazers) &nbsp;&nbsp; [![GitHub forks](https://img.shields.io/github/forks/mamedul/temp-mail?style=social)](https://github.com/mamedul/temp-mail/network/members) &nbsp;&nbsp; [![GitHub watchers](https://img.shields.io/github/watchers/mamedul/temp-mail?style=social)](https://github.com/mamedul/temp-mail/watchers) &nbsp;&nbsp; [![GitHub followers](https://img.shields.io/github/followers/mamedul?style=social)](https://github.com/mamedul?tab=followers)
 
