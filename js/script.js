@@ -11,6 +11,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const PWA_VERSION_KEY = 'pwa_version';
     const CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
+    // Google Analytics function to fire events
+    const trackEvent = (eventName, eventCategory, eventLabel) => {
+        if (typeof ga === 'function') {
+            ga('send', 'event', eventCategory, eventName, eventLabel);
+        }
+    };
+
     const delay = async (ms) => {
         return new Promise((resolve) => setTimeout(resolve, ms))
     };
@@ -273,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.setItem('account', JSON.stringify(currentAccount));
                     await loginWithStoredAccount();
                     await postLoginSetup();
+                    trackEvent('create_account', 'Account Actions', 'Custom');
                 } else {
                     showModal('Login failed after registration. Please try again.');
                     showView('account-forms');
@@ -344,6 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (loginRes.status) {
                     currentAccount = storedAccount;
                     await postLoginSetup();
+                    trackEvent('login', 'Account Actions', 'Stored Token');
                 } else {
                     // Token expired or invalid, fall back to forms
                     showModal('Your session has expired. Please create a new email.');
@@ -367,6 +376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     mailjs.token = currentAccount.token || null;
                     mailjs.id = currentAccount.id || null;
                     await postLoginSetup();
+                    trackEvent('login', 'Account Actions', 'Stored Credentials');
                 } else {
                     // Token expired or invalid, fall back to forms
                     showModal('Your stored credential are wrong! Please create a new email.');
@@ -456,10 +466,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Re-render the inbox with all messages from the DB
             await renderInboxFromDb();
+            trackEvent('refresh_inbox', 'Mailbox Actions', 'Success');
 
         } catch (error) {
             console.error('Error refreshing inbox:', error);
             showModal('An error occurred while refreshing the inbox.');
+            trackEvent('refresh_inbox', 'Mailbox Actions', 'Failure');
         } finally {
             refreshSpinner.classList.remove('animate-spin');
             refreshText.textContent = 'Refresh Inbox';
@@ -556,6 +568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             downloadSourceBtn.onclick = () => downloadMessageSource(messageId);
             deleteMessageBtn.onclick = () => deleteMessage(messageId);
             showView('message');
+            trackEvent('view_message', 'Mailbox Actions', `From: ${message.from.address}`);
         } catch (error) {
             console.error('Error viewing message:', error);
             showModal('An error occurred while viewing the message.');
@@ -586,6 +599,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </html>
         `);
         doc.close();
+        trackEvent('open_in_window', 'Mailbox Actions', `From: ${message.from.address}`);
     };
 
     const downloadMessageSource = async (messageId) => {
@@ -601,6 +615,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+                trackEvent('download_source', 'Mailbox Actions', messageId);
             } else {
                 showModal('Failed to download message source.');
             }
@@ -621,6 +636,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showModal('Message deleted successfully.');
                     await renderInboxFromDb();
                     showView('inbox');
+                    trackEvent('delete_message', 'Mailbox Actions', messageId);
                 } else {
                     showModal('Failed to delete message.');
                     showView('message');
@@ -649,6 +665,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showModal('Account deleted successfully.');
                         showView('account-forms');
                         resolve(res);
+                        trackEvent('delete_account', 'Account Actions', 'Success');
                     } else {
                         showModal('Failed to delete account.');
                         showView('inbox');
@@ -685,6 +702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     //showModal('Email address copied to clipboard!');
                     copySucceed.classList.remove('hidden');
                     setTimeout(()=>{copySucceed.classList.add('hidden');},1500);
+                    trackEvent('copy_email', 'Mailbox Actions', 'Success');
                 }).catch(err => {
                     const tempInput = document.createElement('input');
                     tempInput.value = currentAccount.address;
@@ -695,11 +713,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     //showModal('Email address copied to clipboard!');
                     copySucceed.classList.remove('hidden');
                     setTimeout(()=>{copySucceed.classList.add('hidden');},1500);
+                    trackEvent('copy_email', 'Mailbox Actions', 'Success-Fallback');
                 });
             } catch (error) {
                 //showModal('Failed to copy. Please copy manually.');
                 copyFailed.classList.remove('hidden');
                 setTimeout(()=>{copyFailed.classList.add('hidden');},2500);
+                trackEvent('copy_email', 'Mailbox Actions', 'Failure');
             }
         }
     });
