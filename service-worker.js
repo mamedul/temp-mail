@@ -6,10 +6,14 @@ const urlsToCache = [
     './css/style.css',
     './js/script.js',
     './manifest.json',
-    './libs/mailjs/3.0.0/mailjs.min.js',
+    './libs/Mailjs/3.0.0/mailjs.min.js',
     './libs/Mailjs/3.0.0/eventsource.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
     'https://www.googletagmanager.com/gtag/js?id=UA-52459272-3',
+    './apple-touch-icon.png',
+    './favicon-32x32.png',
+    './favicon-16x16.png',
+    './favicon.ico',
 ];
 
 self.addEventListener('install', event => {
